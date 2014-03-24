@@ -63,11 +63,20 @@ public:
 
 
 
-//Bullet
-class bulletEngine
+class Engine
 {
 public:
-	int main() {
+	virtual int display() = 0;
+	//virtual int drawCube();
+
+	//~Engine();
+};
+
+class BulletEngine : public Engine
+{
+public:
+	int display()
+	{
 		// Initialize irrlicht
 		EventReceiverClass Receiver;
 		irrDevice = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(800, 600),32, false, false, false,&Receiver);
@@ -142,7 +151,12 @@ public:
 		//Floor
 		CreateBox(btVector3(0.0f, 0.0f, 0.0f), irr::core::vector3df(10.0f, 0.5f, 10.0f), 0.0f);
 		//Cube
-		CreateBox(btVector3(0.00f, 10, 0.00f), irr::core::vector3df(1.0f, 1.0f, 1.0f), 100);
+		//CreateBox(btVector3(0.00f, 10, 0.00f), irr::core::vector3df(1.0f, 1.0f, 1.0f), 10.0f);
+	}
+
+	void CreateCube(){
+		//Cube
+		CreateBox(btVector3(0.00f, 10, 0.00f), irr::core::vector3df(1.0f, 1.0f, 1.0f), 10.0f);
 	}
 
 	// Create a box rigid body
@@ -170,7 +184,7 @@ public:
 		//btRigidBody *RigidBody = new btRigidBody(TMass, MotionState, Shape, LocalInertia);
 
 		btRigidBody::btRigidBodyConstructionInfo rbInfo(TMass, MotionState, Shape, LocalInertia);
-		rbInfo.m_restitution=0.6;	
+		rbInfo.m_restitution=0.6f;	
 		btRigidBody* RigidBody = new btRigidBody(rbInfo);
 
 		// Store a pointer to the irrlicht node so we can update it later
@@ -181,6 +195,7 @@ public:
 		Objects.push_back(RigidBody);
 	}
 
+	//Bounce
 	void QuaternionToEuler(const btQuaternion &TQuat, btVector3 &TEuler) {
 		btScalar W = TQuat.getW();
 		btScalar X = TQuat.getX();
@@ -211,15 +226,18 @@ public:
 		Node->setRotation(irr::core::vector3df(EulerRotation[0], EulerRotation[1], EulerRotation[2]));
 	
 	}
+
+
+	//void drawCube();
 };
 
 
-
-
-//Tokamak
-class tokamakEngine
+/*
+class TokamakEngine : public Engine
 {
 public:
+	int display()
+	{
 		#define PI 3.1415926
 		#define CUBECOUNT 1
 		#define CUBEX 5.0
@@ -679,13 +697,24 @@ public:
 };
 
 
-
+*/
 
 int main ()
 {
-	//bulletEngine bullet;
-	//bullet.main();
+	BulletEngine engine;
+	//engine.CreateStartScene();
+	engine.CreateCube();
+	engine.display();
 
-	tokamakEngine tokamak;
-	tokamak.main();
-};
+	//Engine *engine = new BulletEngine();
+	//engine->display();
+
+	//BulletEngine bullet;
+	//Engine *engine = &bullet;
+	//engine->display();
+
+
+}
+
+
+
