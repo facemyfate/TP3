@@ -6,6 +6,8 @@
 #include <cstdlib>
 
 
+
+
 // linking with lib and disable console window
 
 
@@ -27,6 +29,8 @@ static void CreateStartScene();
 static void CreateBox(const btVector3 &TPosition, const irr::core::vector3df &TScale, btScalar TMass);
 static void UpdatePhysics(irr::u32 TDeltaTime);
 static void UpdateRender(btRigidBody *TObject);
+static void CreateSphere(const btVector3 &TPosition, btScalar TRadius, btScalar TMass);
+static int GetRandInt(int TMax) { return rand() % TMax; };
 
 // Global
 static bool Done = false;
@@ -224,18 +228,233 @@ public:
 
 
 
+class BulletEngine2 : public Engine
+{
+public:
+	int display() {
+
+	// Initialize irrlicht
+	EventReceiverClass Receiver;
+		irrDevice = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(800, 600),32, false, false, false,&Receiver);
+		irrGUI = irrDevice->getGUIEnvironment();
+		irrTimer = irrDevice->getTimer();
+		irrScene = irrDevice->getSceneManager();
+		irrDriver = irrDevice->getVideoDriver();
+		irrDevice->getCursorControl()->setVisible(0);
+
+	// Initialize bullet
+	btDefaultCollisionConfiguration *CollisionConfiguration = new btDefaultCollisionConfiguration();
+	btBroadphaseInterface *BroadPhase = new btAxisSweep3(btVector3(-1000, -1000, -1000), btVector3(1000, 1000, 1000));
+	btCollisionDispatcher *Dispatcher = new btCollisionDispatcher(CollisionConfiguration);
+	btSequentialImpulseConstraintSolver *Solver = new btSequentialImpulseConstraintSolver();
+	World = new btDiscreteDynamicsWorld(Dispatcher, BroadPhase, Solver, CollisionConfiguration);
+
+	// Add camera
+		irr::scene::ICameraSceneNode *Camera = irrScene->addCameraSceneNodeFPS(0, 100, 10);
+		Camera->setPosition(irr::core::vector3df(2.0f, 5, 5.0f));
+		Camera->setTarget(irr::core::vector3df(0,0,0));
+
+	// Preload textures
+	//irrDriver->getTexture("ice0.jpg");
+	//irrDriver->getTexture("rust0.jpg");
+
+	// Create text
+	//IGUISkin *Skin = irrGUI->getSkin();
+	//Skin->setColor(EGDC_BUTTON_TEXT, SColor(255, 255, 255, 255));
+	//irrGUI->addStaticText(L"Hit 1 to create a box\nHit 2 to create a sphere\nHit x to reset", rect<s32>(0, 0, 200, 100), false);
+
+	// Create the initial scene
+	//irrScene->addLightSceneNode(0, core::vector3df(2, 5, -2), SColorf(4, 4, 4, 1));
+	//CreateStartScene();
+
+	// Create the initial scene
+		irrScene->addLightSceneNode(0, irr::core::vector3df(2, 5, -2), irr::video::SColorf(4, 4, 4, 1));
+		CreateStartScene();
+
+	// Main loop
+	u32 TimeStamp = irrTimer->getTime(), DeltaTime = 0;
+	while(!Done) {
+
+		DeltaTime = irrTimer->getTime() - TimeStamp;
+		TimeStamp = irrTimer->getTime();
+
+		UpdatePhysics(DeltaTime);
+
+		irrDriver->beginScene(true, true, irr::video::SColor(255, 20, 0, 0));
+		irrScene->drawAll();
+		irrGUI->drawAll();
+		irrDriver->endScene();
+		irrDevice->run();
+	}
+
+	//ClearObjects();
+	delete World;
+	delete Solver;
+	delete Dispatcher;
+	delete BroadPhase;
+	delete CollisionConfiguration;
+
+	irrDevice->drop();
+
+	return 0;
+}
+
+// Runs the physics simulation.
+	// - TDeltaTime tells the simulation how much time has passed since the last frame so the simulation can run independently of the frame rate.
+	void UpdatePhysics(irr::u32 TDeltaTime){
+
+		World->stepSimulation(TDeltaTime * 0.001f, 60);
+
+		// Relay the object's orientation to irrlicht
+		for(irr::core::list<btRigidBody *>::Iterator Iterator = Objects.begin(); Iterator != Objects.end(); ++Iterator) {
+
+			UpdateRender(*Iterator);
+		}	
+	}
+
+// Creates a base box
+void CreateStartScene() {
+
+	//ClearObjects();
+	CreateBox(btVector3(0.0f, 0.0f, 0.0f), irr::core::vector3df(10.0f, 0.5f, 10.0f), 0.0f);
+	//Createsphere
+	CreateSphere(btVector3(GetRandInt(10) - 5.0f, 7.0f, GetRandInt(10) - 5.0f), GetRandInt(5) / 5.0f + 0.2f, 1.0f);
+
+}
+
+// Create a box rigid body
+	void CreateBox(const btVector3 &TPosition, const irr::core::vector3df &TScale, btScalar TMass) {
+	
+		irr::scene::ISceneNode *Node = irrScene->addCubeSceneNode(1.0f);
+		Node->setScale(TScale);
 
 
+	// Set the initial position of the object
+	btTransform Transform;
+	Transform.setIdentity();
+	Transform.setOrigin(TPosition);
 
+	btDefaultMotionState *MotionState = new btDefaultMotionState(Transform);
+
+	// Create the shape
+	btVector3 HalfExtents(TScale.X * 0.5f, TScale.Y * 0.5f, TScale.Z * 0.5f);
+	btCollisionShape *Shape = new btBoxShape(HalfExtents);
+
+	// Add mass
+	btVector3 LocalInertia;
+	Shape->calculateLocalInertia(TMass, LocalInertia);
+
+	// Create the rigid body object
+	btRigidBody *RigidBody = new btRigidBody(TMass, MotionState, Shape, LocalInertia);
+
+	// Store a pointer to the irrlicht node so we can update it later
+	RigidBody->setUserPointer((void *)(Node));
+
+	// Add it to the world
+	World->addRigidBody(RigidBody);
+	Objects.push_back(RigidBody);
+}
+
+// Create a sphere rigid body
+void CreateSphere(const btVector3 &TPosition, btScalar TRadius, btScalar TMass) {
+
+	irr::scene::ISceneNode *Node = irrScene->addSphereSceneNode(TRadius, 32);
+
+	// Set the initial position of the object
+	btTransform Transform;
+	Transform.setIdentity();
+	Transform.setOrigin(TPosition);
+
+	btDefaultMotionState *MotionState = new btDefaultMotionState(Transform);
+
+	// Create the shape
+	btCollisionShape *Shape = new btSphereShape(TRadius);
+
+	// Add mass
+	btVector3 LocalInertia;
+	Shape->calculateLocalInertia(TMass, LocalInertia);
+
+	// Create the rigid body object
+	btRigidBody *RigidBody = new btRigidBody(TMass, MotionState, Shape, LocalInertia);
+
+	// Store a pointer to the irrlicht node so we can update it later
+	RigidBody->setUserPointer((void *)(Node));
+
+	// Add it to the world
+	World->addRigidBody(RigidBody);
+	Objects.push_back(RigidBody);
+}
+
+
+//Bounce
+	void QuaternionToEuler(const btQuaternion &TQuat, btVector3 &TEuler) {
+		btScalar W = TQuat.getW();
+		btScalar X = TQuat.getX();
+		btScalar Y = TQuat.getY();
+		btScalar Z = TQuat.getZ();
+		float WSquared = W * W;
+		float XSquared = X * X;
+		float YSquared = Y * Y;
+		float ZSquared = Z * Z;
+
+		TEuler.setX(atan2f(2.0f * (Y * Z + X * W), -XSquared - YSquared + ZSquared + WSquared));
+		TEuler.setY(asinf(-2.0f * (X * Z - Y * W)));
+		TEuler.setZ(atan2f(2.0f * (X * Y + Z * W), XSquared - YSquared - ZSquared + WSquared));
+		TEuler *= irr::core::RADTODEG;
+	}
+
+
+// Passes bullet's orientation to irrlicht
+void UpdateRender(btRigidBody *TObject) {
+	irr::scene::ISceneNode *Node = static_cast<irr::scene::ISceneNode *>(TObject->getUserPointer());
+
+	// Set position
+	btVector3 Point = TObject->getCenterOfMassPosition();
+	Node->setPosition(irr::core::vector3df((irr::f32)Point[0], (irr::f32)Point[1], (irr::f32)Point[2]));
+
+	// Set rotation
+		btVector3 EulerRotation;
+		QuaternionToEuler(TObject->getOrientation(), EulerRotation);
+		Node->setRotation(irr::core::vector3df(EulerRotation[0], EulerRotation[1], EulerRotation[2]));
+	
+}
+
+
+/*
+// Removes all objects from the world
+void ClearObjects() {
+
+	for(list<btRigidBody *>::Iterator Iterator = Objects.begin(); Iterator != Objects.end(); ++Iterator) {
+		btRigidBody *Object = *Iterator;
+
+		// Delete irrlicht node
+		ISceneNode *Node = static_cast<ISceneNode *>(Object->getUserPointer());
+		Node->remove();
+
+		// Remove the object from the world
+		World->removeRigidBody(Object);
+
+		// Free memory
+		delete Object->getMotionState();
+		delete Object->getCollisionShape();
+		delete Object;
+	}
+
+	Objects.clear();
+	}	
+	*/
+};
+
+/*
 class TokamakEngine : public Engine
 //class TokamakEngine
 {
 public:
 		#define PI 3.1415926
 		#define CUBECOUNT 1
-		#define CUBEX 5.0
-		#define CUBEY 5.0
-		#define CUBEZ 5.0
+		#define CUBEX 50.0
+		#define CUBEY 50.0
+		#define CUBEZ 50.0
 		#define CUBEMASS 1.0f
 		#define FLOORSIZE 100
  
@@ -251,7 +470,8 @@ public:
 
 		class PhysicsCubeNode: public irr::scene::ISceneNode
 		{
-			irr::core::aabbox3d<irr::f32> Box;
+			//irr::core::aabbox3d<irr::f32> Box;
+			irr::core::vector3df Box;
 			irr::video::S3DVertex Vertices[8];
 			irr::video::SMaterial Material;
  
@@ -291,7 +511,9 @@ public:
  
 				Box.reset(Vertices[0].Pos);
 				for (s32 i=1; i<8; ++i)
+				{
 					Box.addInternalPoint(Vertices[i].Pos);
+				}
 			}
  
  
@@ -496,7 +718,7 @@ public:
 				// be easily destabelized
 				//pos.Set((irr::f32)((rand()%10) / 20.0f * CUBEX, 4.0f + i * (CUBEY + 1),
 						//(rand()%10)/ 20.0f * CUBEZ));
-				pos.Set(0,20,0);
+				pos.Set(0.0f,10,0.0f);
 				gCubes[i]->SetPos(pos);
 			}
  
@@ -639,16 +861,12 @@ public:
 				//     We loop through each cube;
 				for (i=0; i<CUBECOUNT; i++)
 				{
- 
 					//First, we get the position from the Tokamak cube
- 
 					neV3 p = gCubes[i]->GetPos();
- 
 					//Now, we set up out temporary vector
 					TempVect.X = p[0];
 					TempVect.Y = p[1];
 					TempVect.Z = p[2];
- 
 					//And set the position of the cube that Irrlicht is going to draw
 					CubeNode[i]->setPosition(TempVect);
 					CubeNode[i]->Update(gCubes[i]);
@@ -656,22 +874,13 @@ public:
  
 				//irr - Now we draw it all
 				irrDriver->beginScene(true, true, irr::video::SColor(0,100,100,100));
- 
 				irrScene->drawAll();
- 
 				irrDriver->endScene();
  
-				int fps = irrDriver->getFPS();
- 
-				if (lastFPS != fps)
-				{
-					wchar_t tmp[1024];
-					swprintf(tmp, 1024, L"Physics Example- Irrlicht & Tokamak"\
-							 L" Engines(fps:%d)", fps);
- 
-					irrDevice->setWindowCaption(tmp);
-					lastFPS = fps;
-				}
+				wchar_t tmp[1024];
+				swprintf(tmp, 1024, L"Physics Example- Irrlicht & Tokamak");
+				irrDevice->setWindowCaption(tmp);
+				
 			}
  
  
@@ -687,14 +896,92 @@ public:
  
 			return 0;
 		}
+		
 };
 
 
+*/
 
+
+
+
+
+
+/*
+
+
+class TokamakEngine : public Engine
+{
+public:
+	static irr::core::list<neRigidBody *> Objects; // Rigid Body for the ball
+
+	int display()
+	{
+		// Initialize irrlicht
+		EventReceiverClass Receiver;
+		irrDevice = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(800, 600),32, false, false, false,&Receiver);
+		irrGUI = irrDevice->getGUIEnvironment();
+		irrTimer = irrDevice->getTimer();
+		irrScene = irrDevice->getSceneManager();
+		irrDriver = irrDevice->getVideoDriver();
+		irrDevice->getCursorControl()->setVisible(0);
+
+		// Add camera
+		irr::scene::ICameraSceneNode *Camera = irrScene->addCameraSceneNodeFPS(0, 100, 10);
+		Camera->setPosition(irr::core::vector3df(2.0f, 5, 5.0f));
+		Camera->setTarget(irr::core::vector3df(0,0,0));
+
+	
+		// Create the initial scene
+		irrScene->addLightSceneNode(0, irr::core::vector3df(2, 5, -2), irr::video::SColorf(4, 4, 4, 1));
+		CreateStartScene();
+	
+
+		// Main loop
+		irr::u32 TimeStamp = irrTimer->getTime(), DeltaTime = 0;
+		while(!Done) {
+
+			DeltaTime = irrTimer->getTime() - TimeStamp;
+			TimeStamp = irrTimer->getTime();
+
+			UpdatePhysics(DeltaTime);
+
+			irrDriver->beginScene(true, true, irr::video::SColor(255, 20, 0, 0));
+			irrScene->drawAll();
+			irrGUI->drawAll();
+			irrDriver->endScene();
+			irrDevice->run();
+		}
+
+		irrDevice->drop();
+
+		return 0;
+
+	};
+		// Runs the physics simulation.
+	// - TDeltaTime tells the simulation how much time has passed since the last frame so the simulation can run independently of the frame rate.
+		void UpdatePhysics(irr::u32 TDeltaTime){
+
+		World->stepSimulation(TDeltaTime * 0.001f, 60);
+
+		// Relay the object's orientation to irrlicht
+		for(irr::core::list<btRigidBody *>::Iterator Iterator = Objects.begin(); Iterator != Objects.end(); ++Iterator) {
+
+			UpdateRender(*Iterator);
+		}
+	
+
+	//void CreateBox
+
+	};
+};
+
+*/
 
 int main ()
 {
-	BulletEngine engine;
+	//BulletEngine engine;
+	BulletEngine2 engine;
 	//TokamakEngine engine;
 	engine.display();
 
@@ -707,3 +994,6 @@ int main ()
 
 
 }
+
+
+
