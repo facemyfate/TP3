@@ -26,9 +26,6 @@
 
 
 
-
-
-
 // Functions
 static void CreateStartScene();
 static void CreateBox(const btVector3 &TPosition, const irr::core::vector3df &TScale, btScalar TMass);
@@ -45,12 +42,6 @@ static irr::gui::IGUIEnvironment *irrGUI;
 static irr::ITimer *irrTimer;
 static irr::core::list<btRigidBody *> Objects;
 
-
-
-
-
-
-//Bullet
 class EventReceiverClass : public irr::IEventReceiver  {
 
 public:
@@ -75,6 +66,8 @@ public:
 };
 
 
+
+//Bullet
 /*
 int main() {
 
@@ -228,10 +221,6 @@ void UpdateRender(btRigidBody *TObject) {
 
 
 
-
-
-
-
 //Tokamak
 #define PI 3.1415926
 #define CUBECOUNT 1
@@ -241,8 +230,6 @@ void UpdateRender(btRigidBody *TObject) {
 #define CUBEMASS 50000000.0f
 #define FLOORSIZE 100
  
-//irr::scene::ICameraSceneNode* camera = 0;
- 
 neSimulator *gSim = NULL;
  
 neRigidBody *gCubes[CUBECOUNT];
@@ -251,22 +238,7 @@ neAnimatedBody *gFloor = NULL;
 bool gbUseHFTimer;
 int gCurrentTime;
 float gfTimeScale;
- 
 
-/*
-class MyEventReceiver : public irr::IEventReceiver
-{
-public:
-    virtual bool OnEvent(const irr::SEvent& event)
-    {
-        if (camera)
-            return camera->OnEvent(event);
- 
-        return false;
-    }
-};
- 
- */
 
 class PhysicsCubeNode: public irr::scene::ISceneNode
 {
@@ -558,7 +530,6 @@ float GetElapsedTime()
  
 int main()
 {
-    //irr - variable
 
 	EventReceiverClass Receiver;
 	irrDevice = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(800, 600),32, false, false, false,&Receiver);
@@ -572,7 +543,6 @@ int main()
 	camera->setPosition(irr::core::vector3df(20,30,20));
 	camera->setTarget(irr::core::vector3df(-20,-30,-20));
 
-	//EventReceiverClass Receiver;
     //tok - timer stuff
     float fElapsed;
     static float fLastElapsed;
@@ -581,30 +551,10 @@ int main()
     //MC - I needed a vector3df to pass to the Node movement functions
     irr::core::vector3df TempVect;
  
-
-	/*
-    irr::IrrlichtDevice *device =
-        irr::createDevice(irr::video::EDT_OPENGL,
-                          irr::core::dimension2d<irr::u32>(800, 600), 32,
-                          false, false,NULL);
- 
- */
     //TIMER = device->getTimer();
-
 	TIMER = irrDevice ->getTimer();
  
-  // irr::video::IVideoDriver* driver = device->getVideoDriver();
-    //irr::scene::ISceneManager* smgr = device->getSceneManager();
- 
- 
-    //MC - I moved the camera so the initial view is more interesting
-    //     then turned it toward the origin, there the cubes fall
-	/*
-	camera = smgr->addCameraSceneNodeFPS(0, 100.0f, 0.5f);
-    camera->setPosition(irr::core::vector3df(20,30,20));
-    camera->setTarget(irr::core::vector3df(-20,-30,-20));
- */
-    //device->getCursorControl()->setVisible(false);
+    //irrDevice->getCursorControl()->setVisible(false);
  
  
 //MC - This is a major step, in case it's not obvious.
