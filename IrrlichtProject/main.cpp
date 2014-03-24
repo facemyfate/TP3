@@ -22,7 +22,7 @@
 #endif
 
 
-// Functions
+// Functions Prototype
 static void CreateStartScene();
 static void CreateBox(const btVector3 &TPosition, const irr::core::vector3df &TScale, btScalar TMass);
 static void UpdatePhysics(irr::u32 TDeltaTime);
@@ -38,12 +38,10 @@ static irr::gui::IGUIEnvironment *irrGUI;
 static irr::ITimer *irrTimer;
 static irr::core::list<btRigidBody *> Objects;
 
+
 class EventReceiverClass : public irr::IEventReceiver  {
-
 public:
-
 	virtual bool OnEvent(const irr::SEvent &TEvent) {
-
 		if(TEvent.EventType == irr::EET_KEY_INPUT_EVENT && !TEvent.KeyInput.PressedDown) {
 			switch(TEvent.KeyInput.Key) {
 				case irr::KEY_ESCAPE:
@@ -53,10 +51,8 @@ public:
 					return false;
 				break;
 			}
-
 			return true;
 		}
-
 		return false;
 	}
 };
@@ -151,11 +147,6 @@ public:
 		//Floor
 		CreateBox(btVector3(0.0f, 0.0f, 0.0f), irr::core::vector3df(10.0f, 0.5f, 10.0f), 0.0f);
 		//Cube
-		//CreateBox(btVector3(0.00f, 10, 0.00f), irr::core::vector3df(1.0f, 1.0f, 1.0f), 10.0f);
-	}
-
-	void CreateCube(){
-		//Cube
 		CreateBox(btVector3(0.00f, 10, 0.00f), irr::core::vector3df(1.0f, 1.0f, 1.0f), 10.0f);
 	}
 
@@ -232,12 +223,14 @@ public:
 };
 
 
-/*
+
+
+
+
 class TokamakEngine : public Engine
+//class TokamakEngine
 {
 public:
-	int display()
-	{
 		#define PI 3.1415926
 		#define CUBECOUNT 1
 		#define CUBEX 5.0
@@ -559,7 +552,7 @@ public:
 		}
  
 
-		int main()
+		int display()
 		{
 
 			EventReceiverClass Receiver;
@@ -697,13 +690,12 @@ public:
 };
 
 
-*/
+
 
 int main ()
 {
 	BulletEngine engine;
-	//engine.CreateStartScene();
-	engine.CreateCube();
+	//TokamakEngine engine;
 	engine.display();
 
 	//Engine *engine = new BulletEngine();
@@ -715,6 +707,3 @@ int main ()
 
 
 }
-
-
-
