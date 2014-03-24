@@ -10,8 +10,6 @@
 
 
 
-
-
 #ifdef _IRR_WINDOWS_
 #define _CRT_SECURE_NO_WARNINGS
 #pragma comment(lib, "Irrlicht.lib")
@@ -23,6 +21,9 @@
 
 #pragma comment(linker, "/subsystem:windows /ENTRY:mainCRTStartup")
 #endif
+
+
+
 
 
 
@@ -227,7 +228,7 @@ void UpdateRender(btRigidBody *TObject) {
 #define CUBEX 5.0
 #define CUBEY 5.0
 #define CUBEZ 5.0
-#define CUBEMASS 50000000.0f
+#define CUBEMASS 1.0f
 #define FLOORSIZE 100
  
 neSimulator *gSim = NULL;
@@ -331,6 +332,20 @@ public:
     {
         return Material;
     }
+
+	virtual void Update(neRigidBody *gCubes)
+{
+	neQ q = gCubes->GetRotationQ();
+	neM4 neMatrix = q.BuildMatrix();
+	neMatrix.SetTranslation(gCubes->GetPos());
+	for (int x=0; x < 4; x++)
+	{
+		for (int y=0; y < 4; y++)
+		{
+			AbsoluteTransformation(y,x) = neMatrix.M[x][y];
+		}
+	}
+}
 };
  
  
@@ -437,7 +452,7 @@ bool InitPhysics(void)
     sizeInfo.constraintsCount = 0;
     sizeInfo.terrainNodesStartCount = 0;
  
-    gravity.Set(0.0f, -10.0f, 0.0f);
+    gravity.Set(0.0f, -100.0f, 0.0f);
  
     gSim = neSimulator::CreateSimulator(sizeInfo, NULL, &gravity);
  
@@ -528,6 +543,7 @@ float GetElapsedTime()
     return fElapsed;
 }
  
+
 int main()
 {
 
@@ -627,22 +643,7 @@ int main()
  
             //And set the position of the cube that Irrlicht is going to draw
             CubeNode[i]->setPosition(TempVect);
- 
-            //Last, we get the rotation from the Tokamak cube
-            // This is a the rotation quaternion, I believe
-            // More information is found here:
-            // http://www.gamedev.net/reference/articl ... le1095.asp
-            // (Thanks to unnamed forum user)
-            neQ q = gCubes[i]->GetRotationQ();
- 
-            //Again, the temporary vector is set
-            TempVect.Y = q.Y;
-            TempVect.X = q.X;
-            TempVect.Z = q.Z;
- 
-            //we convert it to degrees and set the Irrlicht cube's rotation
-            TempVect *= ((irr::f32)(180 / PI));
-            CubeNode[i]->setRotation(TempVect);
+			CubeNode[i]->Update(gCubes[i]);
         }
  
         //irr - Now we draw it all
