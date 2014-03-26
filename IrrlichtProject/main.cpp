@@ -32,6 +32,7 @@ static void UpdatePhysics(irr::u32 TDeltaTime);
 static void UpdateRender(btRigidBody *TObject);
 static void CreateSphere(const btVector3 &TPosition, btScalar TRadius, btScalar TMass);
 static int GetRandInt(int TMax) { return rand() % TMax; };
+static void CreateStartScene(float x, float y , float z);
 
 // Global
 static bool Done = false;
@@ -106,7 +107,7 @@ public:
 	
 		// Create the initial scene
 		irrScene->addLightSceneNode(0, irr::core::vector3df(2, 5, -2), irr::video::SColorf(4, 4, 4, 1));
-		CreateStartScene();
+		CreateStartScene(x,y,z);
 	
 
 		// Main loop
@@ -151,7 +152,8 @@ public:
 	}
 
 	// Creates a base box
-	void CreateStartScene() {
+
+	void CreateStartScene(float x, float y, float z) {
 
 		//Floor
 		CreateBox(btVector3(0.0f, 0.0f, 0.0f), irr::core::vector3df(10.0f, 0.5f, 10.0f), 0.0f);
@@ -231,9 +233,9 @@ public:
 	}
 
 	float setCubeSize(float q, float w, float e){
-		float x = q;
-		float y = w;
-		float z = e;
+		 x = q;
+		 y = w;
+		 z = e;
 
 		return (x,y,z);
 	}
@@ -790,7 +792,7 @@ int main ()
 	BulletEngine engine;
 	//TokamakEngine engine;
 	//engine.drawcube(x,y,z);
-	engine.setCubeSize(10.0f,10.0f,10.0f);
+	engine.setCubeSize(1.0,1.0,1.0);
 	engine.display();
 
 	//Engine *engine = new BulletEngine();
