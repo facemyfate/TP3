@@ -3,18 +3,9 @@
 #include <bullet/btBulletDynamicsCommon.h>
 #include <tokamak/tokamak.h>
 #include <time.h>
-#include <cstdlib>
-#include <vector>
-
-#include <cstdio>
-
-#include <iostream>
-using namespace std;
 
 
 // linking with lib and disable console window
-
-
 #ifdef _IRR_WINDOWS_
 #define _CRT_SECURE_NO_WARNINGS
 #pragma comment(lib, "Irrlicht.lib")
@@ -33,7 +24,6 @@ static void CreateStartScene();
 static void CreateBox(const btVector3 &TPosition, const irr::core::vector3df &TScale, btScalar TMass);
 static void UpdatePhysics(irr::u32 TDeltaTime);
 static void UpdateRender(btRigidBody *TObject);
-static void CreateStartScene(f32 x, f32 y , f32 z);
 
 
 // Global
@@ -46,18 +36,17 @@ static irr::gui::IGUIEnvironment *irrGUI;
 static irr::ITimer *irrTimer;
 static irr::core::list<btRigidBody *> Objects;
 
+//Global Variables
 f32 x_global;
 f32 y_global;
 f32 z_global;
 
 
 
-
-
 class EventReceiverClass : public irr::IEventReceiver  {
 public:
 	virtual bool OnEvent(const irr::SEvent &TEvent) {
-		if(TEvent.EventType == irr::EET_KEY_INPUT_EVENT && !TEvent.KeyInput.PressedDown) {
+		if(TEvent.EventType == irr::EET_KEY_INPUT_EVENT) {
 			switch(TEvent.KeyInput.Key) {
 			case irr::KEY_ESCAPE:
 				Done = true;
@@ -73,23 +62,19 @@ public:
 };
 
 
-
+//Abstract Class Engine
 class Engine
 {
 public:
 	virtual int display() = 0;
-	virtual void setCubeSize(f32 q,f32 w,f32 e) =0;
+	virtual void setCubeSize(f32 q,f32 w,f32 e) = 0;
 
-	//~Engine();
 };
 
+//Concrete Class Bullet Engine
 class BulletEngine : public Engine
 {
 public:
-	f32 x;
-	f32 y;
-	f32 z;
-
 	int display()
 	{
 		// Initialize irrlicht
@@ -110,13 +95,12 @@ public:
 
 		// Add camera
 		irr::scene::ICameraSceneNode *Camera = irrScene->addCameraSceneNodeFPS(0, 100, 10);
-		Camera->setPosition(irr::core::vector3df(2.0f, 5, 5.0f));
-		Camera->setTarget(irr::core::vector3df(0,0,0));
-
+		Camera->setPosition(irr::core::vector3df(20,30,20));
+		Camera->setTarget(irr::core::vector3df(-20,-30,-20));
 
 		// Create the initial scene
 		irrScene->addLightSceneNode(0, irr::core::vector3df(2, 5, -2), irr::video::SColorf(4, 4, 4, 1));
-		CreateStartScene(x,y,z);
+		CreateStartScene();
 
 
 		// Main loop
@@ -133,6 +117,10 @@ public:
 			irrGUI->drawAll();
 			irrDriver->endScene();
 			irrDevice->run();
+
+			wchar_t tmp[1024];
+			swprintf(tmp, 1024, L"Physics Example- Irrlicht & Bullet");
+			irrDevice->setWindowCaption(tmp);
 		}
 
 
@@ -150,27 +138,26 @@ public:
 	// Runs the physics simulation.
 	// - TDeltaTime tells the simulation how much time has passed since the last frame so the simulation can run independently of the frame rate.
 	void UpdatePhysics(irr::u32 TDeltaTime){
-
 		World->stepSimulation(TDeltaTime * 0.001f, 60);
-
 		// Relay the object's orientation to irrlicht
 		for(irr::core::list<btRigidBody *>::Iterator Iterator = Objects.begin(); Iterator != Objects.end(); ++Iterator) {
-
 			UpdateRender(*Iterator);
 		}	
 	}
 
 	// Creates a base box
-
-	void CreateStartScene(f32 a, f32 b, f32 c) {
-
+	void CreateStartScene() {
 		//Floor
-		CreateBox(btVector3(0.0f, 0.0f, 0.0f), irr::core::vector3df(10.0f, 0.5f, 10.0f), 0.0f);
+		CreateBox(btVector3(0.0f, 0.0f, 0.0f), irr::core::vector3df(50.0f, 0.5f, 50.0f), 0.0f);
 		//Cube
-		//CreateBox(btVector3(0.00f, 10, 0.00f), irr::core::vector3df(1.0f, 1.0f, 1.0f), 10.0f);
+		CreateBox(btVector3(0.00f, 10, 0.00f), irr::core::vector3df(x_global, y_global, z_global), 10.0f);
+	}
 
-		//Cube
-		CreateBox(btVector3(0.00f, 10, 0.00f), irr::core::vector3df(x, y, z), 10.0f);
+	//Set Cube Size
+	void setCubeSize(f32 q, f32 w, f32 e){
+		x_global = q;
+		y_global = w;
+		z_global = e;
 	}
 
 	// Create a box rigid body
@@ -195,10 +182,8 @@ public:
 		Shape->calculateLocalInertia(TMass, LocalInertia);
 
 		// Create the rigid body object
-		//btRigidBody *RigidBody = new btRigidBody(TMass, MotionState, Shape, LocalInertia);
-
 		btRigidBody::btRigidBodyConstructionInfo rbInfo(TMass, MotionState, Shape, LocalInertia);
-		rbInfo.m_restitution=0.6f;	
+		rbInfo.m_restitution=0.8f;	
 		btRigidBody* RigidBody = new btRigidBody(rbInfo);
 
 		// Store a pointer to the irrlicht node so we can update it later
@@ -209,7 +194,7 @@ public:
 		Objects.push_back(RigidBody);
 	}
 
-	//Bounce
+	//Rotation
 	void QuaternionToEuler(const btQuaternion &TQuat, btVector3 &TEuler) {
 		btScalar W = TQuat.getW();
 		btScalar X = TQuat.getX();
@@ -238,35 +223,22 @@ public:
 		btVector3 EulerRotation;
 		QuaternionToEuler(TObject->getOrientation(), EulerRotation);
 		Node->setRotation(irr::core::vector3df(EulerRotation[0], EulerRotation[1], EulerRotation[2]));
-
-	}
-
-	void setCubeSize(f32 q, f32 w, f32 e){
-	x = q;
-	y = w;
-	z = e;
-
-	//return (x,y,z);
 	}
 
 
 };
 
 
+//Concrete Class Tokamak Engine
 class TokamakEngine : public Engine
-	//class TokamakEngine
 {
 public:
 #define PI 3.1415926
 #define CUBECOUNT 1
-#define CUBEX 5.0
-#define CUBEY 5.0
-#define CUBEZ 5.0
 #define CUBEMASS 1.0f
-#define FLOORSIZE 100
+#define FLOORSIZE 70
 
 	neSimulator *gSim;
-
 	neRigidBody *gCubes[CUBECOUNT];
 	neAnimatedBody *gFloor;
 
@@ -274,7 +246,13 @@ public:
 	int gCurrentTime;
 	float gfTimeScale;
 
-	 
+
+	void setCubeSize(f32 a, f32 b, f32 c){
+		x_global = a;
+		y_global = b;
+		z_global = c;
+	}
+
 	class PhysicsCubeNode: public irr::scene::ISceneNode
 	{
 		irr::core::aabbox3d<irr::f32> Box;
@@ -282,9 +260,6 @@ public:
 		irr::video::SMaterial Material;
 
 	public:
-		f32 a;
-		f32 b;
-		f32 c;
 
 		PhysicsCubeNode(irr::scene::ISceneNode* parent,
 			irr::scene::ISceneManager* mgr, irr::u32 id)
@@ -293,127 +268,30 @@ public:
 			Material.Wireframe = false;
 			Material.Lighting = false;
 			
-			/*
-			Vertices[0] = irr::video::S3DVertex(
-				-CUBEX/2,-CUBEY / 2,-CUBEZ/2, 1,1,0,
+		Vertices[0] = irr::video::S3DVertex(
+				-(x_global/2), -(y_global/2), -(z_global/2), 1,1,0,
 				irr::video::SColor(255,0,255,255), 0, 1);
 			Vertices[1] = irr::video::S3DVertex(
-				CUBEX/2,-CUBEY / 2,-CUBEZ/2, 1,0,0,
+				(x_global/2), -(y_global / 2), -(z_global/2), 1,0,0,
 				irr::video::SColor(255,255,0,255), 1, 1);
 			Vertices[2] = irr::video::S3DVertex(
-				CUBEX/2,-CUBEY / 2, CUBEZ/2, 0,1,1,
+				(x_global/2), -(y_global / 2), (z_global/2), 0,1,1,
 				irr::video::SColor(255,255,255,0), 1, 0);
 			Vertices[3] = irr::video::S3DVertex(
-				-CUBEX/2,-CUBEY / 2, CUBEZ/2, 0,0,1,
+				-(x_global/2), -(y_global / 2), (z_global/2), 0,0,1,
 				irr::video::SColor(255,0,255,0), 0, 0);
 			Vertices[4] = irr::video::S3DVertex(
-				-CUBEX/2, CUBEY / 2,-CUBEZ/2, 0,0,1,
+				-(x_global/2), (y_global / 2), -(z_global/2), 0,0,1,
 				irr::video::SColor(255,0,0,255), 0, 0);
 			Vertices[5] = irr::video::S3DVertex(
-				CUBEX/2, CUBEY / 2,-CUBEZ/2, 0,0,1,
+				(x_global/2), (y_global / 2), -(z_global/2), 0,0,1,
 				irr::video::SColor(255,255,0,0), 0, 0);
 			Vertices[6] = irr::video::S3DVertex(
-				CUBEX/2, CUBEY / 2, CUBEZ/2, 0,0,1,
+				(x_global/2), (y_global / 2), (z_global/2), 0,0,1,
 				irr::video::SColor(255,0,0,0), 0, 0);
 			Vertices[7] = irr::video::S3DVertex(
-				-CUBEX/2, CUBEY / 2, CUBEZ/2, 0,0,1,
+				-(x_global/2), (y_global / 2), (z_global/2), 0,0,1,
 				irr::video::SColor(255,255,255,255), 0, 0);
-				*/
-			
-
-			
-			//cout << a;
-			//a = 10.0;
-		//	b = 10.0;
-			//c = 10.0;
-
-			//a = *(this->(this->getX()));
-
-			a = x_global;
-			b = y_global;
-			c = z_global;
-
-			Vertices[0] = irr::video::S3DVertex(
-				-(a/2), -(b/2), -(c/2), 1,1,0,
-				irr::video::SColor(255,0,255,255), 0, 1);
-			Vertices[1] = irr::video::S3DVertex(
-				(a/2), -(b / 2), -(c/2), 1,0,0,
-				irr::video::SColor(255,255,0,255), 1, 1);
-			Vertices[2] = irr::video::S3DVertex(
-				(a/2), -(b / 2), (c/2), 0,1,1,
-				irr::video::SColor(255,255,255,0), 1, 0);
-			Vertices[3] = irr::video::S3DVertex(
-				-(a/2), -(b / 2), (c/2), 0,0,1,
-				irr::video::SColor(255,0,255,0), 0, 0);
-			Vertices[4] = irr::video::S3DVertex(
-				-(a/2), (b / 2), -(c/2), 0,0,1,
-				irr::video::SColor(255,0,0,255), 0, 0);
-			Vertices[5] = irr::video::S3DVertex(
-				(a/2), (b / 2), -(c/2), 0,0,1,
-				irr::video::SColor(255,255,0,0), 0, 0);
-			Vertices[6] = irr::video::S3DVertex(
-				(a/2), (b / 2), (c/2), 0,0,1,
-				irr::video::SColor(255,0,0,0), 0, 0);
-			Vertices[7] = irr::video::S3DVertex(
-				-(a/2), (b / 2), (c/2), 0,0,1,
-				irr::video::SColor(255,255,255,255), 0, 0);
-				
-
-		
-/*
-			Vertices[0] = irr::video::S3DVertex(
-				-(x/2), -(y/2), -(z/2), 1,1,0,
-				irr::video::SColor(255,0,255,255), 0, 1);
-			Vertices[1] = irr::video::S3DVertex(
-				(x/2), -(y / 2), -(z/2), 1,0,0,
-				irr::video::SColor(255,255,0,255), 1, 1);
-			Vertices[2] = irr::video::S3DVertex(
-				(x/2), -(y / 2), (z/2), 0,1,1,
-				irr::video::SColor(255,255,255,0), 1, 0);
-			Vertices[3] = irr::video::S3DVertex(
-				-(x/2), -(y / 2), (z/2), 0,0,1,
-				irr::video::SColor(255,0,255,0), 0, 0);
-			Vertices[4] = irr::video::S3DVertex(
-				-(x/2), (y / 2), -(z/2), 0,0,1,
-				irr::video::SColor(255,0,0,255), 0, 0);
-			Vertices[5] = irr::video::S3DVertex(
-				(x/2), (y / 2), -(z/2), 0,0,1,
-				irr::video::SColor(255,255,0,0), 0, 0);
-			Vertices[6] = irr::video::S3DVertex(
-				(x/2), (y / 2), (z/2), 0,0,1,
-				irr::video::SColor(255,0,0,0), 0, 0);
-			Vertices[7] = irr::video::S3DVertex(
-				-(x/2), (y / 2), (z/2), 0,0,1,
-				irr::video::SColor(255,255,255,255), 0, 0);
-			
-			*/
-
-		/*	
-			Vertices[0] = irr::video::S3DVertex(
-				-5/2,-5 / 2,-5/2, 1,1,0,
-				irr::video::SColor(255,0,255,255), 0, 1);
-			Vertices[1] = irr::video::S3DVertex(
-				5/2,-5 / 2,-5/2, 1,0,0,
-				irr::video::SColor(255,255,0,255), 1, 1);
-			Vertices[2] = irr::video::S3DVertex(
-				5/2,-5 / 2, 5/2, 0,1,1,
-				irr::video::SColor(255,255,255,0), 1, 0);
-			Vertices[3] = irr::video::S3DVertex(
-				-5/2,-5 / 2, 5/2, 0,0,1,
-				irr::video::SColor(255,0,255,0), 0, 0);
-			Vertices[4] = irr::video::S3DVertex(
-				-5/2, 5 / 2,-5/2, 0,0,1,
-				irr::video::SColor(255,0,0,255), 0, 0);
-			Vertices[5] = irr::video::S3DVertex(
-				5/2, 5 / 2,-5/2, 0,0,1,
-				irr::video::SColor(255,255,0,0), 0, 0);
-			Vertices[6] = irr::video::S3DVertex(
-				5/2, 5 / 2, 5/2, 0,0,1,
-				irr::video::SColor(255,0,0,0), 0, 0);
-			Vertices[7] = irr::video::S3DVertex(
-				-5/2, 5 / 2, 5/2, 0,0,1,
-				irr::video::SColor(255,255,255,255), 0, 0);
-			*/
 
 			Box.reset(Vertices[0].Pos);
 			for (s32 i=1; i<8; ++i)
@@ -480,7 +358,6 @@ public:
 				}
 			}
 		}
-
 
 
 	};
@@ -570,8 +447,6 @@ public:
 		neV3 pos;         // The position of a cube
 		f32 mass;         // The mass of our cubes
 		neSimulatorSizeInfo sizeInfo; // SizeInfo stores data
-		// about how manyobjects we are going to model
-		int i;
 
 		sizeInfo.rigidBodiesCount = CUBECOUNT;
 
@@ -594,6 +469,7 @@ public:
 
 		srand((unsigned int)time(NULL));
 
+		int i;
 		for (i=0; i<CUBECOUNT; i++)
 		{
 			// Create a rigid body
@@ -602,8 +478,7 @@ public:
 			// Add geometry to the body and set it to be a box
 			// of dimensions 1, 1, 1
 			geom = gCubes[i]->AddGeometry();
-			boxSize1.Set(CUBEX, CUBEY, CUBEZ);
-			//boxSize1.Set(50.0, 50.0, 50.0);
+			boxSize1.Set(x_global, y_global, z_global);
 			geom->SetBoxSize(boxSize1[0], boxSize1[1], boxSize1[2]);
 
 			// Update the bounding info of the object -- must always call this
@@ -616,15 +491,7 @@ public:
 				neBoxInertiaTensor(boxSize1[0], boxSize1[1], boxSize1[2], mass));
 			gCubes[i]->SetMass(mass);
 
-			// Vary the position so the cubes don't all exactly
-			// stack on top of each other
-			// (makes for a more interesting simulation)
-
-			// MC - You may need to play with the randomization
-			// stuff, since your cubemay be to big to
-			// be easily destabelized
-			//pos.Set((irr::f32)((rand()%10) / 20.0f * CUBEX, 4.0f + i * (CUBEY + 1),
-			//(rand()%10)/ 20.0f * CUBEZ));
+			//Set Cube Position
 			pos.Set(0,20,0);
 			gCubes[i]->SetPos(pos);
 		}
@@ -635,10 +502,10 @@ public:
 		boxSize1.Set(FLOORSIZE, 0.0f, FLOORSIZE);
 		geom->SetBoxSize(boxSize1[0],boxSize1[1],boxSize1[2]);
 		gFloor->UpdateBoundingInfo();
-
+		//Set Floor Position
 		pos.Set(0.0f, 0.0f, 0.0f);
 		gFloor->SetPos(pos);
-		// All done
+
 		return true;
 	}
 
@@ -680,18 +547,9 @@ public:
 		return fElapsed;
 	}
 
-	void setCubeSize(f32 a, f32 b, f32 c){
-		x_global = a;
-		y_global = b;
-		z_global = c;
-		//cout << x; 
-		//return (x,y,z);
-	}
-
 
 	int display()
 	{
-
 		EventReceiverClass Receiver;
 		irrDevice = irr::createDevice(irr::video::EDT_OPENGL, irr::core::dimension2d<irr::u32>(800, 600),32, false, false, false,&Receiver);
 		irrGUI = irrDevice->getGUIEnvironment();
@@ -700,63 +558,46 @@ public:
 		irrDriver = irrDevice->getVideoDriver();
 		irrDevice->getCursorControl()->setVisible(0);
 
-		irr::scene::ICameraSceneNode *camera = irrScene->addCameraSceneNodeFPS(0, 100, 10);
-		camera->setPosition(irr::core::vector3df(20,30,20));
-		camera->setTarget(irr::core::vector3df(-20,-30,-20));
+		irr::scene::ICameraSceneNode *Camera = irrScene->addCameraSceneNodeFPS(0, 100, 10);
+		Camera->setPosition(irr::core::vector3df(20,30,20));
+		Camera->setTarget(irr::core::vector3df(-20,-30,-20));
 
 		//tok - timer stuff
 		float fElapsed;
 		static float fLastElapsed;
-		int i;
 
 		//MC - I needed a vector3df to pass to the Node movement functions
 		irr::core::vector3df TempVect;
 
-		//TIMER = device->getTimer();
 		TIMER = irrDevice ->getTimer();
 
-		//irrDevice->getCursorControl()->setVisible(false);
-
-
-		//MC - This is a major step, in case it's not obvious.
 		// Initialize Tokamak
 		InitPhysics();
 
-		//MC - Here we set up our array of cubes then create them.
-		// Make sure you DO NOT drop() the cubes, since we need to
-		// use the pointer to refer back to the
-		// cubes to position them
 		PhysicsCubeNode *CubeNode[CUBECOUNT];
 
+		int i;
 		for (i=0; i<CUBECOUNT; i++)
 		{
 			CubeNode[i] = new PhysicsCubeNode(
 				irrScene->getRootSceneNode(), irrScene, 666);
 		}
 
-		//MC - I'm one of those programmers that will fit 2
-		// or more commands on one line if I can.  Plus, I
-		// think this is a really cute way of calling and
-		// dropping a node without using a variable. I use
-		// the magic of C++ to create a new Node and drop
-		// that same node in the same look.  If I was doing
-		// this the long way I would need a PhysicsFloorNode
-		// pointer
 		(new PhysicsFloorNode(irrScene->getRootSceneNode(),
 			irrScene, 666))->drop();
 
 		//tok - Initialize the timer and the variable to
 		// count the last number of milliseconds.
-		//      this makes sure there isn't a wierd jump in the program.
+		// this makes sure there isn't a wierd jump in the program.
 		InitTimer();
 		fLastElapsed = 0;
 
 		//irr - This will give us something to reference the last FPS count
 		int lastFPS = -1;
 
-		while(irrDevice->run())
+		while(!Done)
 		{
-
+			irrDevice->run();
 			//tok - Find out how much time has elapsed
 			//      since we were last called
 			fElapsed = GetElapsedTime();
@@ -771,17 +612,13 @@ public:
 			}
 			else
 				fLastElapsed = fLastElapsed+fElapsed;
-
-			//MC - here where the real magic happens.
-			//     We loop through each cube;
+				
 			for (i=0; i<CUBECOUNT; i++)
 			{
-
 				//First, we get the position from the Tokamak cube
-
 				neV3 p = gCubes[i]->GetPos();
 
-				//Now, we set up out temporary vector
+				//Set temporary vector
 				TempVect.X = p[0];
 				TempVect.Y = p[1];
 				TempVect.Z = p[2];
@@ -793,33 +630,20 @@ public:
 
 			//irr - Now we draw it all
 			irrDriver->beginScene(true, true, irr::video::SColor(0,100,100,100));
-
 			irrScene->drawAll();
-
 			irrDriver->endScene();
 
-			int fps = irrDriver->getFPS();
+			wchar_t tmp[1024];
+			swprintf(tmp, 1024, L"Physics Example- Irrlicht & Tokamak");
+			irrDevice->setWindowCaption(tmp);
 
-			if (lastFPS != fps)
-			{
-				wchar_t tmp[1024];
-				swprintf(tmp, 1024, L"Physics Example- Irrlicht & Tokamak"\
-					L" Engines(fps:%d)", fps);
-
-				irrDevice->setWindowCaption(tmp);
-				lastFPS = fps;
-			}
 		}
 
-
-		//tok - When we're one, we kill the physics engine
 		KillPhysics();
-
-		//MC - And drop all the node pointers that we don't need anymore
 		for (i=0; i<CUBECOUNT; i++)
+		{
 			CubeNode[i]->drop();
-
-		//irr - and we finish off everything by dropping the device
+		}
 		irrDevice->drop();
 
 		return 0;
@@ -832,23 +656,7 @@ int main ()
 	//BulletEngine engine;
 	TokamakEngine engine;
 
-	
-
-	engine.setCubeSize(10.0,3.0,3.0);
+	engine.setCubeSize(30.0,3.0,3.0);
 	engine.display();
 
-
-	//Engine *engine = new BulletEngine();
-	//engine->display();
-
-	//BulletEngine bullet;
-	//Engine *engine = &bullet;
-	//engine->display();
-
-
 }
-
-
-
-
-
